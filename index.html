@@ -57,7 +57,7 @@ body{font-family:'Vazirmatn',sans-serif;background:var(--bg);color:var(--text);m
 .files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
 .file-card{background:var(--card);border-radius:15px;overflow:hidden;transition:.3s;border:1px solid rgba(124,58,237,.15);position:relative}
 .file-card:hover{transform:translateY(-5px);border-color:var(--primary);box-shadow:0 10px 30px rgba(124,58,237,.2)}
-.file-preview{width:100%;height:180px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:60px;position:relative;overflow:hidden}
+.file-preview{width:100%;height:180px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:60px;position:relative;overflow:hidden;cursor:pointer}
 .file-preview img{width:100%;height:100%;object-fit:cover}
 .file-preview video{width:100%;height:100%;object-fit:cover}
 .file-info{padding:15px}
@@ -71,19 +71,19 @@ body{font-family:'Vazirmatn',sans-serif;background:var(--bg);color:var(--text);m
 .btn-copy:hover{background:var(--success)}
 .btn-delete{background:var(--danger);color:white}
 
-.uploader-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);backdrop-filter:blur(5px);padding:4px 10px;border-radius:20px;font-size:11px;color:white}
+.uploader-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);backdrop-filter:blur(5px);padding:4px 10px;border-radius:20px;font-size:11px;color:white;z-index:2}
 
 .empty-state{text-align:center;padding:80px 20px;color:var(--muted)}
 .empty-state .emoji{font-size:80px;margin-bottom:20px;opacity:.5}
 .empty-state h3{color:white;margin-bottom:10px}
 
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--success);color:white;padding:15px 30px;border-radius:10px;font-size:14px;font-weight:700;z-index:9999;transition:.5s;font-family:'Vazirmatn';box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--success);color:white;padding:15px 30px;border-radius:10px;font-size:14px;font-weight:700;z-index:9999;transition:.5s;font-family:'Vazirmatn';box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:10000;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
 .modal-content{max-width:90%;max-height:90%;position:relative}
-.modal img,.modal video{max-width:100%;max-height:80vh;border-radius:10px}
+.modal img,.modal video,.modal audio{max-width:100%;max-height:80vh;border-radius:10px}
 .modal-close{position:absolute;top:-40px;right:0;background:var(--danger);color:white;border:none;width:35px;height:35px;border-radius:50%;cursor:pointer;font-size:18px;font-weight:700}
 
 footer{text-align:center;padding:30px;color:var(--muted);font-size:13px;border-top:1px solid rgba(124,58,237,.1);margin-top:50px}
@@ -112,7 +112,7 @@ footer .heart{color:var(--danger)}
 <div class="upload-box" id="uploadBox">
 <div class="upload-icon">📤</div>
 <h2>فایل جدید آپلود کن</h2>
-<p>عکس، ویدیو، سند یا هر چیز دیگه (تا 100MB)</p>
+<p>عکس، ویدیو، آهنگ، سند یا هر چیز دیگه (تا 100MB)</p>
 <input type="text" class="name-input" id="uploaderName" placeholder="اسمت رو بنویس (مثلاً: رضا)">
 <input type="file" class="upload-input" id="fileInput" multiple>
 <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
@@ -183,25 +183,33 @@ const t = document.getElementById('toast');
 t.textContent = msg;
 t.style.background = color;
 t.classList.add('show');
-setTimeout(()=>t.classList.remove('show'), 3000);
+setTimeout(()=>t.classList.remove('show'), 4000);
 }
 
-function getFileType(url){
-const ext = url.split('.').pop().toLowerCase();
+function getFileType(url, mimeType){
+if(mimeType){
+if(mimeType.startsWith('image/')) return 'image';
+if(mimeType.startsWith('video/')) return 'video';
+if(mimeType.startsWith('audio/')) return 'other';
+}
+const ext = url.split('.').pop().toLowerCase().split('?')[0];
 if(['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) return 'image';
 if(['mp4','webm','mov','avi','mkv'].includes(ext)) return 'video';
 return 'other';
 }
 
-function getFileIcon(type,name){
+function getFileIcon(type, name, mimeType){
 if(type==='image')return '📸';
 if(type==='video')return '🎥';
+if(mimeType && mimeType.startsWith('audio/'))return '🎵';
 const ext = name.split('.').pop().toLowerCase();
+if(['mp3','wav','ogg','m4a','flac'].includes(ext))return '🎵';
 if(['pdf'].includes(ext))return '📕';
 if(['doc','docx'].includes(ext))return '📘';
 if(['xls','xlsx'].includes(ext))return '📗';
+if(['ppt','pptx'].includes(ext))return '📙';
 if(['zip','rar','7z'].includes(ext))return '📦';
-if(['mp3','wav','ogg'].includes(ext))return '🎵';
+if(['txt'].includes(ext))return '📝';
 return '📄';
 }
 
@@ -240,8 +248,7 @@ progressFill.style.width = '90%';
 const data = await response.json();
 
 if(data.secure_url){
-let fileType = getFileType(data.secure_url);
-if(isAudio) fileType = 'other';
+let fileType = getFileType(data.secure_url, file.type);
 
 files.unshift({
 id: Date.now(),
@@ -249,6 +256,7 @@ name: file.name,
 url: data.secure_url,
 size: file.size,
 type: fileType,
+mimeType: file.type,
 uploader: uploaderName,
 date: new Date().toLocaleString('fa-IR')
 });
@@ -332,12 +340,16 @@ return;
 
 container.innerHTML = '<div class="files-grid">' + filtered.map(f=>{
 let preview = '';
+const isAudioFile = (f.mimeType && f.mimeType.startsWith('audio/')) || ['mp3','wav','ogg','m4a','flac'].includes(f.name.split('.').pop().toLowerCase());
+
 if(f.type === 'image'){
 preview = `<img src="${f.url}" alt="${f.name}" onclick="openModal('image','${f.url}')">`;
 } else if(f.type === 'video'){
 preview = `<video src="${f.url}" onclick="openModal('video','${f.url}')"></video>`;
+} else if(isAudioFile){
+preview = `<div onclick="openModal('audio','${f.url}')" style="text-align:center">🎵<div style="font-size:14px;margin-top:10px;color:var(--primary2)">پخش آهنگ</div></div>`;
 } else {
-preview = getFileIcon(f.type, f.name);
+preview = getFileIcon(f.type, f.name, f.mimeType);
 }
 
 return `
@@ -353,8 +365,8 @@ ${preview}
 <span>${f.date.split(',')[0]}</span>
 </div>
 <div class="file-actions">
-<a href="${f.url}" download="${f.name}" target="_blank" class="file-btn btn-download" style="text-decoration:none;text-align:center">⬇️ دانلود</a>
-<button class="file-btn btn-copy" onclick="copyLink('${f.url}')">🔗 کپی</button>
+<a href="${f.url}" download="${f.name}" target="_blank" class="file-btn btn-download" style="text-decoration:none;text-align:center;display:block">⬇️</a>
+<button class="file-btn btn-copy" onclick="copyLink('${f.url}')">🔗</button>
 <button class="file-btn btn-delete" onclick="deleteFile(${f.id})">🗑️</button>
 </div>
 </div>
@@ -364,6 +376,14 @@ ${preview}
 
 function copyLink(url){
 navigator.clipboard.writeText(url).then(()=>{
+showToast('🔗 لینک کپی شد!');
+}).catch(()=>{
+const temp = document.createElement('input');
+temp.value = url;
+document.body.appendChild(temp);
+temp.select();
+document.execCommand('copy');
+document.body.removeChild(temp);
 showToast('🔗 لینک کپی شد!');
 });
 }
@@ -381,8 +401,10 @@ const modal = document.getElementById('modal');
 const body = document.getElementById('modalBody');
 if(type === 'image'){
 body.innerHTML = `<img src="${url}">`;
-} else {
+} else if(type === 'video'){
 body.innerHTML = `<video src="${url}" controls autoplay></video>`;
+} else if(type === 'audio'){
+body.innerHTML = `<div style="background:var(--card);padding:40px;border-radius:20px;text-align:center;min-width:300px"><div style="font-size:80px;margin-bottom:20px">🎵</div><audio src="${url}" controls autoplay style="width:100%"></audio></div>`;
 }
 modal.classList.add('show');
 }
