@@ -224,8 +224,10 @@ const formData = new FormData();
 formData.append('file', file);
 formData.append('upload_preset', UPLOAD_PRESET);
 
+const isAudio = file.type.startsWith('audio/');
 const isVideo = file.type.startsWith('video/');
-const resourceType = isVideo ? 'video' : file.type.startsWith('image/') ? 'image' : 'raw';
+const isImage = file.type.startsWith('image/');
+const resourceType = (isVideo || isAudio) ? 'video' : isImage ? 'image' : 'raw';
 
 try{
 progressFill.style.width = '50%';
@@ -238,12 +240,15 @@ progressFill.style.width = '90%';
 const data = await response.json();
 
 if(data.secure_url){
+let fileType = getFileType(data.secure_url);
+if(isAudio) fileType = 'other';
+
 files.unshift({
 id: Date.now(),
 name: file.name,
 url: data.secure_url,
 size: file.size,
-type: getFileType(data.secure_url),
+type: fileType,
 uploader: uploaderName,
 date: new Date().toLocaleString('fa-IR')
 });
@@ -256,10 +261,12 @@ progressBar.classList.remove('show');
 progressFill.style.width = '0%';
 }, 1000);
 } else {
+console.log('Cloudinary Error:', data);
 throw new Error(data.error?.message || 'خطای نامشخص');
 }
 } catch(err){
-showToast('❌ خطا در آپلود: '+err.message, '#ef4444');
+console.log('Upload Error:', err);
+showToast('❌ خطا: '+err.message, '#ef4444');
 progressBar.classList.remove('show');
 progressFill.style.width = '0%';
 }
